@@ -1,0 +1,37 @@
+# Datasets and patient imagery: acquire separately; never commit data
+/NIH Chest X-ray14/
+**/sample/images/
+**/*.dcm
+**/*.dicom
+
+# Python environments, caches, and generated visual-search index
+.venv/
+**/.venv/
+__pycache__/
+*.py[cod]
+visual_search_service/faiss_index.bin
+visual_search_service/index_meta.json
+visual_search_service/uploads/
+
+# .NET build outputs and local settings
+**/bin/
+**/obj/
+**/uploads/
+**/appsettings.*.local.json
+
+# Node / Angular build outputs
+**/node_modules/
+**/dist/
+**/.angular/
+**/coverage/
+npm-debug.log*
+
+# IDE and operating-system files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

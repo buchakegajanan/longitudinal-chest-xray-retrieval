@@ -1,0 +1,16 @@
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  padding-left: var(--sidebar-width);
+  transition: padding-left var(--transition-base);
+
+  &.sidebar-collapsed {
+    padding-left: var(--sidebar-width-collapsed);
+  }
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  background-color: var(--color-bg-primary);
+}

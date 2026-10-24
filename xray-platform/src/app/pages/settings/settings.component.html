@@ -1,0 +1,157 @@
+<app-topbar pageTitle="Settings"></app-topbar>
+
+<main class="page-container settings-page" role="main">
+  <div class="settings-header">
+    <h1 class="page-title">Settings</h1>
+    <p class="page-subtitle">Customize your display preferences and interface behavior.</p>
+  </div>
+
+  <div class="settings-layout">
+
+    <!-- Display preferences -->
+    <section class="card settings-section" aria-labelledby="display-settings-heading">
+      <div class="card-header settings-section-header">
+        <app-icon name="sliders" [size]="16"></app-icon>
+        <h2 id="display-settings-heading" class="settings-section-title">Display Preferences</h2>
+      </div>
+      <div class="card-body settings-body">
+
+        <!-- Interface density -->
+        <div class="setting-row">
+          <div class="setting-info">
+            <label class="setting-label">Interface density</label>
+            <p class="setting-description">Adjust the spacing of interface elements.</p>
+          </div>
+          <div class="density-picker" role="group" aria-label="Select interface density">
+            <button
+              class="density-btn"
+              [class.active]="settings().density === 'compact'"
+              (click)="setDensity('compact')"
+              [attr.aria-pressed]="settings().density === 'compact'"
+              id="density-compact"
+            >Compact</button>
+            <button
+              class="density-btn"
+              [class.active]="settings().density === 'comfortable'"
+              (click)="setDensity('comfortable')"
+              [attr.aria-pressed]="settings().density === 'comfortable'"
+              id="density-comfortable"
+            >Comfortable</button>
+            <button
+              class="density-btn"
+              [class.active]="settings().density === 'spacious'"
+              (click)="setDensity('spacious')"
+              [attr.aria-pressed]="settings().density === 'spacious'"
+              id="density-spacious"
+            >Spacious</button>
+          </div>
+        </div>
+
+        <div class="setting-divider"></div>
+
+        <!-- Demo indicators -->
+        <div class="setting-row">
+          <div class="setting-info">
+            <label class="setting-label" for="demo-toggle">Show demonstration indicators</label>
+            <p class="setting-description">Display badges and notices that identify demonstration and simulated data.</p>
+          </div>
+          <button
+            class="toggle-btn"
+            [class.on]="settings().showDemoIndicators"
+            (click)="toggleDemoIndicators()"
+            [attr.aria-checked]="settings().showDemoIndicators"
+            role="switch"
+            id="demo-toggle"
+            [attr.aria-label]="'Show demonstration indicators: ' + (settings().showDemoIndicators ? 'on' : 'off')"
+          >
+            <span class="toggle-thumb"></span>
+          </button>
+        </div>
+
+        <div class="setting-divider"></div>
+
+        <!-- Sidebar collapsed -->
+        <div class="setting-row">
+          <div class="setting-info">
+            <label class="setting-label" for="sidebar-toggle">Collapsed sidebar</label>
+            <p class="setting-description">Collapse the sidebar to its icon-only compact state.</p>
+          </div>
+          <button
+            class="toggle-btn"
+            [class.on]="settings().sidebarCollapsed"
+            (click)="toggleSidebar()"
+            [attr.aria-checked]="settings().sidebarCollapsed"
+            role="switch"
+            id="sidebar-toggle"
+            [attr.aria-label]="'Collapsed sidebar: ' + (settings().sidebarCollapsed ? 'on' : 'off')"
+          >
+            <span class="toggle-thumb"></span>
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Profile -->
+    <section class="card settings-section" aria-labelledby="profile-settings-heading">
+      <div class="card-header settings-section-header">
+        <app-icon name="user" [size]="16"></app-icon>
+        <h2 id="profile-settings-heading" class="settings-section-title">Profile</h2>
+      </div>
+      <div class="card-body settings-body">
+        <div class="profile-display">
+          <div class="profile-avatar">DR</div>
+          <div class="profile-info">
+            <span class="profile-name">Dr. Research</span>
+            <span class="profile-role">Radiologist — Research prototype user</span>
+          </div>
+        </div>
+        <div class="setting-divider"></div>
+        <p class="profile-note">
+          This is a demonstration profile. User authentication and profile management will be implemented when the ASP.NET Core backend is integrated.
+        </p>
+      </div>
+    </section>
+
+    <!-- Application info -->
+    <section class="card settings-section" aria-labelledby="app-info-heading">
+      <div class="card-header settings-section-header">
+        <app-icon name="info" [size]="16"></app-icon>
+        <h2 id="app-info-heading" class="settings-section-title">Application Information</h2>
+      </div>
+      <div class="card-body settings-body">
+        <dl class="app-info-list">
+          <div class="info-row">
+            <dt>Application</dt>
+            <dd>XRay Insight — AI-Based Chest X-Ray Case Retrieval</dd>
+          </div>
+          <div class="info-row">
+            <dt>Version</dt>
+            <dd>v0.1.0 — Frontend prototype</dd>
+          </div>
+          <div class="info-row">
+            <dt>Framework</dt>
+            <dd>Angular 22 — Standalone components, SCSS</dd>
+          </div>
+          <div class="info-row">
+            <dt>Backend</dt>
+            <dd>Not connected — Future: ASP.NET Core Web API on .NET 8</dd>
+          </div>
+          <div class="info-row">
+            <dt>AI model</dt>
+            <dd>Not connected — Future: Deep-learning image embedding model</dd>
+          </div>
+          <div class="info-row">
+            <dt>Database</dt>
+            <dd>Not connected — Future: SQL Server with Entity Framework Core</dd>
+          </div>
+          <div class="info-row">
+            <dt>Purpose</dt>
+            <dd>Clinical research and decision-support prototype — Not for diagnostic use</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+  </div>
+</main>

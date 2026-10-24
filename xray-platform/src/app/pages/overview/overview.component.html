@@ -1,0 +1,148 @@
+<app-topbar pageTitle="Overview"></app-topbar>
+
+<main class="page-container overview-page" role="main">
+
+  <!-- Welcome header -->
+  <section class="welcome-section" [class.loaded]="isLoaded()">
+    <div class="welcome-content">
+      <div class="welcome-text">
+        <h1 class="page-title">Research Platform Overview</h1>
+        <p class="page-subtitle">
+          AI-based retrieval of similar longitudinal chest X-ray cases for disease progression analysis.
+          This prototype supports clinical research — not diagnostic use.
+        </p>
+      </div>
+      <a routerLink="/analysis" class="btn btn-primary btn-lg" id="start-analysis-btn">
+        <app-icon name="upload-cloud" [size]="18"></app-icon>
+        New X-Ray Analysis
+      </a>
+    </div>
+  </section>
+
+  <!-- Metrics grid -->
+  <section class="metrics-section" aria-label="Platform statistics">
+    <div class="metrics-grid">
+      @for (metric of metrics; track metric.label; let i = $index) {
+        <div class="metric-card card" [style.animation-delay]="(i * 60) + 'ms'" [class.loaded]="isLoaded()">
+          <div class="metric-value">{{ metric.value }}</div>
+          <div class="metric-label">{{ metric.label }}</div>
+          <div class="metric-description">{{ metric.description }}</div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Two column layout -->
+  <div class="two-col-layout">
+
+    <!-- Recent Analysis Sessions -->
+    <section class="card section-card" aria-label="Recent analysis sessions">
+      <div class="card-header section-header">
+        <div class="section-title-group">
+          <app-icon name="clock" [size]="16" class="section-icon"></app-icon>
+          <h2 class="section-title">Recent Analysis Sessions</h2>
+        </div>
+        <span class="badge badge-demo">Demo data</span>
+      </div>
+      <div class="card-body sessions-body">
+        @if (recentSessions.length === 0) {
+          <div class="empty-state">
+            <app-icon name="upload-cloud" [size]="32"></app-icon>
+            <p>No analysis sessions yet.</p>
+            <a routerLink="/analysis" class="btn btn-primary btn-sm">Start Analysis</a>
+          </div>
+        } @else {
+          <ul class="sessions-list" role="list">
+            @for (session of recentSessions; track session.id) {
+              <li class="session-item" role="listitem">
+                <div class="session-icon-wrapper">
+                  <app-icon name="scan" [size]="16"></app-icon>
+                </div>
+                <div class="session-info">
+                  <span class="session-filename">{{ session.uploadedFileName }}</span>
+                  <span class="session-meta">
+                    {{ session.resultCount }} similar cases found
+                    &bull; {{ formatRelativeTime(session.createdAt) }}
+                  </span>
+                </div>
+                <a [routerLink]="['/similar-cases']" class="btn btn-secondary btn-sm session-view-btn">
+                  View
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </section>
+
+    <!-- Recently Viewed Cases -->
+    <section class="card section-card" aria-label="Recently viewed cases">
+      <div class="card-header section-header">
+        <div class="section-title-group">
+          <app-icon name="eye" [size]="16" class="section-icon"></app-icon>
+          <h2 class="section-title">Indexed Cases</h2>
+        </div>
+        <a routerLink="/dataset" class="btn btn-ghost btn-sm">View all</a>
+      </div>
+      <div class="card-body cases-body">
+        <ul class="cases-list" role="list">
+          @for (c of recentCases; track c.id) {
+            <li class="case-item" role="listitem">
+              <div class="case-thumbnail">
+                <img [src]="c.examinations[0]?.thumbnailUrl" [alt]="'Thumbnail for ' + c.caseIdentifier"
+                     width="48" height="48" loading="lazy">
+              </div>
+              <div class="case-info">
+                <span class="case-id">{{ c.caseIdentifier }}</span>
+                <span class="case-meta">{{ c.totalExaminations }} examinations</span>
+                <div class="case-tags">
+                  @for (tag of c.conditionTags.slice(0, 2); track tag) {
+                    <span class="badge badge-grey case-tag">{{ tag }}</span>
+                  }
+                </div>
+              </div>
+              <div class="case-actions">
+                <a [routerLink]="['/timelines', c.id]" class="btn btn-ghost btn-sm" [attr.aria-label]="'View timeline for ' + c.caseIdentifier">
+                  <app-icon name="timeline" [size]="14"></app-icon>
+                  Timeline
+                </a>
+              </div>
+            </li>
+          }
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <!-- Research Activity Summary -->
+  <section class="card activity-card" aria-label="Platform information">
+    <div class="card-body activity-body">
+      <div class="activity-col">
+        <div class="activity-label">Dataset source</div>
+        <div class="activity-value">NIH ChestX-ray14 sample subset</div>
+      </div>
+      <div class="activity-divider"></div>
+      <div class="activity-col">
+        <div class="activity-label">AI model status</div>
+        <div class="activity-value status-connected">
+          <span class="status-dot"></span>
+          ResNet-50 + FAISS visual retrieval
+        </div>
+      </div>
+      <div class="activity-divider"></div>
+      <div class="activity-col">
+        <div class="activity-label">Backend API</div>
+        <div class="activity-value status-connected">
+          <span class="status-dot"></span>
+          ASP.NET Core API
+        </div>
+      </div>
+      <div class="activity-divider"></div>
+      <div class="activity-col">
+        <div class="activity-label">Platform version</div>
+        <div class="activity-value">v0.1.0 — Frontend prototype</div>
+      </div>
+    </div>
+  </section>
+
+</main>

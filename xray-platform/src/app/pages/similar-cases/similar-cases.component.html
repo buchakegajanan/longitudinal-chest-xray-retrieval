@@ -1,0 +1,264 @@
+<app-topbar pageTitle="Similar Cases"></app-topbar>
+
+<main class="page-container similar-cases-page" role="main">
+
+  <div class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">{{ isSearchResults() ? 'Retrieved Similar Cases' : 'Research Case Library' }}</h1>
+      <p class="page-subtitle">
+        @if (isSearchResults()) {
+          @if (queryMethod() === 'visual') {
+            Cases ranked by visual similarity using ResNet-50 image embeddings.
+          } @else {
+            Cases ranked by finding-label overlap (visual search offline).
+          }
+        } @else {
+          Cases from the NIH ChestX-ray14 dataset.
+        }
+        @if (isSearchResults() && queryMethod() === 'visual') {
+          <span class="badge badge-green" style="margin-left: 8px">
+            <app-icon name="cpu" [size]="11"></app-icon>
+            Visual AI — ResNet-50 + FAISS
+          </span>
+        } @else if (isSearchResults()) {
+          <span class="badge badge-demo" style="margin-left: 8px">
+            <app-icon name="info" [size]="11"></app-icon>
+            Label-based fallback
+          </span>
+        }
+      </p>
+    </div>
+    <a routerLink="/analysis" class="btn btn-primary" id="new-analysis-btn">
+      <app-icon name="plus"></app-icon>
+      New Analysis
+    </a>
+  </div>
+
+  @if (isSearchResults()) {
+    <section class="query-summary card" aria-label="Search query summary">
+      @if (queryImagePreview()) {
+        <img [src]="queryImagePreview()" alt="Uploaded chest X-ray query preview" class="query-preview">
+      }
+      <div>
+        <h2>Search query</h2>
+        @if (queryMethod() === 'visual') {
+          <p>Method: ResNet-50 visual embedding similarity (cosine distance via FAISS)</p>
+        } @else {
+          <p>Method: Label-based Jaccard similarity{{ queryLabels().length ? ' — Labels: ' + queryLabels().join(', ') : '' }}</p>
+        }
+        <p class="query-disclaimer">Results are ranked by similarity score. Not a clinical diagnosis.</p>
+      </div>
+    </section>
+  }
+
+  <div class="cases-layout">
+
+    <!-- Filter sidebar -->
+    <aside class="filter-sidebar" aria-label="Filter and sort cases">
+      <div class="card filter-card">
+        <div class="filter-header">
+          <h2 class="filter-title">
+            <app-icon name="filter" [size]="14"></app-icon>
+            Filters
+          </h2>
+          @if (hasActiveFilters()) {
+            <button class="btn btn-ghost btn-sm" (click)="clearFilters()" id="clear-filters-btn">Clear all</button>
+          }
+        </div>
+
+        <!-- Search -->
+        <div class="filter-section">
+          <label class="form-label" for="case-search">Search cases</label>
+          <div class="search-wrapper">
+            <app-icon name="search" [size]="14" class="search-icon"></app-icon>
+            <input
+              id="case-search"
+              type="search"
+              class="form-input search-input"
+              placeholder="Case ID or condition..."
+              [value]="searchQuery()"
+              (input)="onSearchInput($event)"
+            >
+          </div>
+        </div>
+
+        <!-- Sort -->
+        <div class="filter-section">
+          <label class="form-label" for="sort-select">Sort by</label>
+          <select id="sort-select" class="form-select" (change)="onSortChange($event)">
+            @for (opt of sortOptions; track opt.value) {
+              <option [value]="opt.value" [selected]="opt.value === selectedSort()">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Min follow-ups -->
+        <div class="filter-section">
+          <label class="form-label" for="followup-select">Minimum follow-ups</label>
+          <select id="followup-select" class="form-select" (change)="onMinFollowupsChange($event)">
+            <option value="0">Any</option>
+            <option value="1">1 or more</option>
+            <option value="2">2 or more</option>
+            <option value="3">3 or more</option>
+          </select>
+        </div>
+
+        <!-- Condition tags -->
+        <div class="filter-section">
+          <p class="form-label">Condition tags</p>
+          <div class="tag-filter-list" role="group" aria-label="Filter by condition tags">
+            @for (tag of allTags; track tag) {
+              <button
+                class="tag-filter-btn"
+                [class.active]="selectedTags().includes(tag)"
+                (click)="toggleTag(tag)"
+                [attr.aria-pressed]="selectedTags().includes(tag)"
+              >{{ tag }}</button>
+            }
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Cases list -->
+    <div class="cases-content">
+
+      <!-- Results count -->
+      <div class="results-meta">
+        <span class="results-count">
+          @if (isLoading()) {
+            Loading cases...
+          } @else {
+            {{ filteredCases().length }} case{{ filteredCases().length !== 1 ? 's' : '' }} found
+          }
+        </span>
+      </div>
+
+      <!-- Loading skeleton -->
+      @if (isLoading()) {
+        <div class="cases-grid" aria-label="Loading cases" aria-busy="true">
+          @for (i of [1,2,3,4,5,6]; track i) {
+            <div class="case-card card skeleton-card">
+              <div class="skeleton thumb-skeleton"></div>
+              <div class="skeleton-body">
+                <div class="skeleton" style="height:14px; width:60%; margin-bottom:8px;"></div>
+                <div class="skeleton" style="height:12px; width:80%;"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Empty state -->
+      @else if (filteredCases().length === 0) {
+        <div class="empty-state" role="status">
+          <app-icon name="search" [size]="40"></app-icon>
+          <h3>No cases match your filters</h3>
+          <p>Try adjusting your search or clearing the active filters.</p>
+          <button class="btn btn-secondary" (click)="clearFilters()">Clear filters</button>
+        </div>
+      }
+
+      <!-- Case cards -->
+      @else {
+        <div class="cases-grid" role="list" aria-label="Similar cases">
+          @for (c of visibleCases(); track c.id; let i = $index) {
+            <article
+              class="case-card card"
+              role="listitem"
+              [style.animation-delay]="(i * 40) + 'ms'"
+              [attr.aria-label]="'Case ' + c.caseIdentifier"
+            >
+              <!-- Thumbnail -->
+              <div class="case-thumb">
+                @if (c.examinations[0]?.thumbnailUrl) {
+                  <img
+                    [src]="c.examinations[0].thumbnailUrl"
+                    [alt]="'Chest X-ray thumbnail for case ' + c.caseIdentifier"
+                    loading="lazy"
+                    width="120"
+                    height="120"
+                  >
+                } @else {
+                  <div class="thumb-unavailable" role="img" [attr.aria-label]="'No image available for ' + c.caseIdentifier">Image unavailable</div>
+                }
+                <div class="exam-count-badge">
+                  {{ c.totalExaminations }} {{ c.totalExaminations === 1 ? 'exam' : 'exams' }}
+                </div>
+              </div>
+
+              <!-- Case info -->
+              <div class="case-body">
+                <div class="case-header-row">
+                  <span class="case-identifier">{{ c.caseIdentifier }}</span>
+                  @if (c.similarityScore !== undefined && c.similarityScore !== null) {
+                    <div class="similarity-chip" [ngClass]="getSimilarityClass(c.similarityScore)">
+                      <span class="similarity-pct">{{ (c.similarityScore * 100) | number:'1.0-0' }}%</span>
+                      <span class="similarity-label">{{ getSimilarityLabel(c.similarityScore) }}</span>
+                    </div>
+                  }
+                </div>
+
+                <div class="case-meta-row">
+                  <span class="case-source">{{ c.datasetSource }}</span>
+                  @if (c.demographicsAvailable) {
+                    <span class="case-demographics">
+                      {{ c.patientAge ? c.patientAge + ' years' : '' }}{{ c.patientAge && c.patientGender ? ' · ' : '' }}{{ c.patientGender ?? '' }}
+                    </span>
+                  }
+                  <span class="case-followups">
+                    <app-icon name="timeline" [size]="12"></app-icon>
+                    {{ c.totalExaminations - 1 }} follow-up{{ c.totalExaminations - 1 !== 1 ? 's' : '' }}
+                  </span>
+                </div>
+
+                <div class="case-tags">
+                  @for (tag of c.conditionTags; track tag) {
+                    <span class="badge badge-grey">{{ tag }}</span>
+                  }
+                </div>
+
+                @if (c.similarityScore !== undefined && c.similarityScore !== null) {
+                  <p class="demo-score-note">
+                    <app-icon name="info" [size]="11"></app-icon>
+                    {{ c.isDemoSimilarity ? 'Label-based similarity (fallback)' : 'Visual similarity — ResNet-50 + FAISS' }}
+                  </p>
+                }
+              </div>
+
+              <!-- Actions -->
+              <div class="case-actions">
+                <a
+                  [routerLink]="['/timelines', c.id]"
+                  class="btn btn-secondary btn-sm"
+                  [attr.aria-label]="'View timeline for ' + c.caseIdentifier"
+                  id="view-timeline-{{ c.id }}"
+                >
+                  <app-icon name="timeline" [size]="14"></app-icon>
+                  Timeline
+                </a>
+                <a
+                  [routerLink]="['/comparison']"
+                  [queryParams]="{ case: c.id }"
+                  class="btn btn-ghost btn-sm"
+                  [attr.aria-label]="'Compare images for ' + c.caseIdentifier"
+                  id="compare-{{ c.id }}"
+                >
+                  <app-icon name="columns" [size]="14"></app-icon>
+                  Compare
+                </a>
+              </div>
+            </article>
+          }
+        </div>
+        @if (totalPages() > 1) {
+          <nav class="pagination" aria-label="Case results pages">
+            <button class="btn btn-secondary btn-sm" (click)="previousPage()" [disabled]="currentPage() === 1">Previous</button>
+            <span aria-live="polite">Page {{ currentPage() }} of {{ totalPages() }}</span>
+            <button class="btn btn-secondary btn-sm" (click)="nextPage()" [disabled]="currentPage() === totalPages()">Next</button>
+          </nav>
+        }
+      }
+    </div>
+  </div>
+</main>

@@ -1,0 +1,278 @@
+<app-topbar pageTitle="New X-Ray Analysis"></app-topbar>
+
+<main class="page-container analysis-page" role="main">
+
+  <div class="analysis-layout">
+
+    <!-- Left: Upload workspace -->
+    <div class="upload-workspace">
+
+      <div class="workspace-header">
+        <div>
+          <h1 class="page-title">Upload Chest X-Ray</h1>
+          <p class="page-subtitle">Upload a chest radiograph to find visually similar historical cases using ResNet-50 image embeddings.</p>
+        </div>
+
+        <!-- Visual search service status -->
+        <div class="service-status-badge"
+          [class.status-online]="visualServiceOnline() === 'ready'"
+          [class.status-offline]="visualServiceOnline() === 'offline'"
+          [class.status-checking]="visualServiceOnline() === 'loading'"
+          role="status">
+          @if (visualServiceOnline() === 'loading') {
+            <app-icon name="loader" [size]="12" class="spinning"></app-icon>
+            {{ visualIndexProgress() }}
+          } @else if (visualServiceOnline() === 'ready') {
+            <app-icon name="check-circle" [size]="12"></app-icon>
+            Visual search ready (ResNet-50 + FAISS)
+          } @else {
+            <app-icon name="alert-circle" [size]="12"></app-icon>
+            Visual search offline — retrieval unavailable
+          }
+        </div>
+      </div>
+
+      <!-- Upload area -->
+      @if (!uploadedImage()) {
+        <div
+          class="dropzone"
+          [class.drag-over]="isDragOver()"
+          [class.has-error]="errorMessage()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+          (click)="triggerFileSelect()"
+          role="button"
+          tabindex="0"
+          aria-label="Upload chest X-ray image. Click or drag and drop a file here."
+          (keydown.enter)="triggerFileSelect()"
+          (keydown.space)="triggerFileSelect()"
+        >
+          <div class="dropzone-content">
+            <div class="dropzone-icon-wrapper" [class.drag-active]="isDragOver()">
+              <app-icon name="upload-cloud" [size]="36"></app-icon>
+            </div>
+            <div class="dropzone-text">
+              <p class="dropzone-primary">
+                @if (isDragOver()) { Release to upload }
+                @else { Drag and drop a chest X-ray image }
+              </p>
+              <p class="dropzone-secondary">or</p>
+            </div>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="$event.stopPropagation(); triggerFileSelect()"
+              tabindex="-1"
+            >
+              <app-icon name="file-image" [size]="16"></app-icon>
+              Browse files
+            </button>
+            <p class="dropzone-formats">
+              Accepted formats: JPEG, PNG &bull; Maximum file size: 20 MB
+            </p>
+          </div>
+        </div>
+
+        @if (errorMessage()) {
+          <div class="error-banner" role="alert" aria-live="assertive">
+            <app-icon name="alert-circle" [size]="16"></app-icon>
+            <span>{{ errorMessage() }}</span>
+          </div>
+        }
+      }
+
+      <!-- Image preview -->
+      @if (uploadedImage(); as img) {
+        <div class="preview-workspace">
+
+          <div class="preview-panel">
+            <div class="preview-image-container">
+              <img
+                [src]="img.previewUrl"
+                [alt]="'Preview of ' + img.file.name"
+                class="preview-image"
+              >
+              <div class="preview-overlay">
+                <button class="preview-overlay-btn" (click)="replaceImage()">
+                  <app-icon name="refresh-cw" [size]="14"></app-icon>
+                  Replace
+                </button>
+                <button class="preview-overlay-btn preview-remove-btn" (click)="removeImage()">
+                  <app-icon name="x" [size]="14"></app-icon>
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-metadata">
+            <h3 class="metadata-heading">Image Information</h3>
+            <dl class="metadata-list">
+              <div class="metadata-row">
+                <dt>File name</dt>
+                <dd class="truncate" [title]="img.file.name">{{ img.file.name }}</dd>
+              </div>
+              <div class="metadata-row">
+                <dt>File size</dt>
+                <dd>{{ formatBytes(img.sizeBytes) }}</dd>
+              </div>
+              <div class="metadata-row">
+                <dt>Dimensions</dt>
+                <dd>{{ img.width }} &times; {{ img.height }} px</dd>
+              </div>
+              <div class="metadata-row">
+                <dt>Format</dt>
+                <dd>{{ img.file.type }}</dd>
+              </div>
+              <div class="metadata-row">
+                <dt>Validation</dt>
+                <dd>
+                  <span class="badge badge-green">
+                    <app-icon name="check" [size]="11"></app-icon>
+                    Valid image
+                  </span>
+                </dd>
+              </div>
+            </dl>
+
+            @if (errorMessage()) {
+              <div class="error-banner" role="alert" aria-live="assertive">
+                <app-icon name="alert-circle" [size]="16"></app-icon>
+                <span>{{ errorMessage() }}</span>
+              </div>
+            }
+
+            <div class="analysis-notice">
+              <app-icon name="cpu" [size]="14"></app-icon>
+              <p>
+                @if (visualServiceOnline() === 'ready') {
+                  Visual similarity search using ResNet-50 deep features + FAISS cosine nearest-neighbour.
+                } @else if (visualServiceOnline() === 'loading') {
+                  {{ visualIndexProgress() }} Retrieval will enable when indexing is complete.
+                } @else {
+                  Visual search service is offline. Image-based retrieval is unavailable.
+                  Start <code>visual_search_service/start.bat</code> for real visual search.
+                }
+              </p>
+            </div>
+
+            <!-- Analysis action -->
+            <div class="analysis-actions">
+              @if (state() === 'idle' || state() === 'error') {
+                <button
+                  class="btn btn-primary btn-lg analysis-btn"
+                  (click)="startAnalysis()"
+                  [disabled]="!uploadedImage() || visualServiceOnline() !== 'ready'"
+                >
+                  <app-icon name="search" [size]="18"></app-icon>
+                  Find Similar X-Rays
+                </button>
+                <button class="btn btn-ghost" (click)="removeImage()">
+                  Cancel
+                </button>
+              }
+
+              @if (state() === 'analysing') {
+                <div class="progress-section" role="status" aria-live="polite">
+                  <div class="progress-header">
+                    <span class="progress-label">
+                      <app-icon name="loader" [size]="14" class="spinning"></app-icon>
+                      @if (visualServiceOnline() === 'ready') {
+                        Extracting visual features and searching dataset...
+                      } @else if (visualServiceOnline() === 'loading') {
+                        Waiting for visual index...
+                      } @else {
+                        Visual-search service unavailable...
+                      }
+                    </span>
+                    <span class="progress-pct">{{ analysisProgress() | number:'1.0-0' }}%</span>
+                  </div>
+                  <div class="progress-bar" role="progressbar"
+                    [attr.aria-valuenow]="analysisProgress()" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-fill" [style.width.%]="analysisProgress()"></div>
+                  </div>
+                </div>
+              }
+
+              @if (state() === 'complete') {
+                <div class="complete-state" role="status">
+                  <app-icon name="check-circle" [size]="20"></app-icon>
+                  <span>Search complete — redirecting to results...</span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Right: Guidance panel -->
+    <aside class="guidance-panel" aria-label="Upload guidance">
+      <div class="card guidance-card">
+        <div class="card-header">
+          <h2 class="guidance-title">How it works</h2>
+        </div>
+        <div class="card-body guidance-body">
+          <ol class="steps-list">
+            <li class="step">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <strong>Upload a chest radiograph</strong>
+                <p>Select a JPEG or PNG chest X-ray image from your device.</p>
+              </div>
+            </li>
+            <li class="step">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <strong>Visual feature extraction</strong>
+                <p>ResNet-50 extracts a 2048-dimensional visual embedding from the image. FAISS finds the nearest neighbours in the dataset index.</p>
+              </div>
+            </li>
+            <li class="step">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <strong>Review similar cases</strong>
+                <p>Browse visually similar historical cases, inspect follow-up examinations, and compare images side by side.</p>
+              </div>
+            </li>
+          </ol>
+
+          <hr class="divider">
+
+          <div class="guidance-notice">
+            <h3 class="guidance-notice-title">Important — Research Use Only</h3>
+            <ul class="notice-list">
+              <li>This platform is a research and clinical decision-support prototype.</li>
+              <li>It does not diagnose diseases or recommend treatments.</li>
+              <li>Use only appropriately de-identified research images.</li>
+              <li>Similarity is visual feature distance, not a clinical diagnosis.</li>
+            </ul>
+          </div>
+
+          <hr class="divider">
+
+          <div class="format-info">
+            <h3 class="format-title">Supported formats</h3>
+            <div class="format-list">
+              <span class="badge badge-grey">JPEG / JPG</span>
+              <span class="badge badge-grey">PNG</span>
+            </div>
+            <p class="format-note">Maximum file size: 20 MB.</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <input
+    #fileInput
+    type="file"
+    accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+    class="visually-hidden"
+    (change)="onFileSelected($event)"
+    aria-label="File upload input"
+  >
+
+</main>

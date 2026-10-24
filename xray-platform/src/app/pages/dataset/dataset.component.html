@@ -1,0 +1,163 @@
+<app-topbar pageTitle="Research Dataset"></app-topbar>
+
+<main class="page-container dataset-page" role="main">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Research Dataset</h1>
+      <p class="page-subtitle">Manage and inspect the indexed chest X-ray research dataset. This is demonstration data only.</p>
+    </div>
+  </div>
+
+  @if (summary(); as s) {
+    <!-- Dataset summary card -->
+    <div class="card dataset-summary-card">
+      <div class="card-body summary-body">
+        <div class="summary-info">
+          <h2 class="summary-name">{{ s.name }}</h2>
+          <p class="summary-description">{{ s.description }}</p>
+          <div class="summary-source">
+            <app-icon name="database" [size]="13"></app-icon>
+            Source: {{ s.source }}
+          </div>
+        </div>
+        <div class="summary-stats">
+          <div class="stat-item">
+            <span class="stat-value">{{ s.totalCases }}</span>
+            <span class="stat-label">Total cases</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ s.indexedCases }}</span>
+            <span class="stat-label">Indexed</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ s.pendingCases }}</span>
+            <span class="stat-label">Pending</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ s.totalImages }}</span>
+            <span class="stat-label">Images</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="index-progress-section">
+        <div class="index-progress-header">
+          <span class="index-progress-label">Indexing progress</span>
+          <span class="index-progress-pct">{{ getIndexProgress() }}%</span>
+        </div>
+        <div class="index-progress-bar" role="progressbar"
+             [attr.aria-valuenow]="getIndexProgress()"
+             aria-valuemin="0" aria-valuemax="100"
+             [attr.aria-label]="'Dataset indexing progress: ' + getIndexProgress() + '%'">
+          <div class="index-progress-fill" [style.width.%]="getIndexProgress()"></div>
+        </div>
+        <p class="index-progress-note">
+          {{ s.indexedCases }} of {{ s.totalCases }} cases indexed.
+          Pending cases require dataset configuration and model setup.
+        </p>
+      </div>
+    </div>
+
+    <!-- Status notice -->
+    <div class="status-notice" [ngClass]="s.status === 'partial' ? 'notice-warning' : 'notice-info'" role="note">
+      <app-icon name="alert-triangle" [size]="15"></app-icon>
+      <div>
+        <strong>Dataset status: {{ s.status === 'partial' ? 'Partially indexed' : s.status }}</strong>
+        <p>This is a sample demonstration dataset. The NIH ChestX-ray14 dataset and other real datasets have not been downloaded, processed, or indexed. Dataset integration requires backend configuration.</p>
+      </div>
+    </div>
+  }
+
+  <!-- Records table -->
+  <div class="card records-card">
+    <div class="records-toolbar">
+      <div class="search-wrapper">
+        <app-icon name="search" [size]="14" class="search-icon"></app-icon>
+        <input
+          type="search"
+          class="form-input search-input"
+          placeholder="Search case ID or condition..."
+          [value]="searchQuery()"
+          (input)="onSearchInput($event)"
+          id="dataset-search"
+          aria-label="Search dataset records"
+        >
+      </div>
+      <select class="form-select" style="width:160px;" (change)="onStatusChange($event)" aria-label="Filter by status" id="status-filter">
+        <option value="">All statuses</option>
+        <option value="indexed">Indexed</option>
+        <option value="pending">Pending</option>
+        <option value="error">Error</option>
+      </select>
+      <span class="records-count" aria-live="polite">{{ filteredRecords().length }} records</span>
+    </div>
+
+    @if (isLoading()) {
+      <div class="table-loading" aria-busy="true">
+        @for (i of [1,2,3,4]; track i) {
+          <div class="skeleton" style="height:44px; margin-bottom:2px;"></div>
+        }
+      </div>
+    } @else {
+      <div class="records-table-wrapper" role="region" aria-label="Dataset records">
+        <table class="records-table" aria-label="Research case records">
+          <thead>
+            <tr>
+              <th scope="col">Case ID</th>
+              <th scope="col">Status</th>
+              <th scope="col">Images</th>
+              <th scope="col">Follow-ups</th>
+              <th scope="col">Labels</th>
+              <th scope="col">Condition tags</th>
+              <th scope="col">Indexed</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (filteredRecords().length === 0) {
+              <tr>
+                <td colspan="7" class="empty-row">
+                  No records match the current search and filter.
+                </td>
+              </tr>
+            } @else {
+              @for (r of filteredRecords(); track r.id) {
+                <tr>
+                  <td>
+                    <span class="record-id">{{ r.caseIdentifier }}</span>
+                  </td>
+                  <td>
+                    <span class="badge" [ngClass]="getStatusBadge(r.status)">{{ r.status }}</span>
+                  </td>
+                  <td class="num-col">{{ r.imageCount > 0 ? r.imageCount : '—' }}</td>
+                  <td class="num-col">{{ r.followUpCount > 0 ? r.followUpCount : '—' }}</td>
+                  <td>
+                    @if (r.hasLabels) {
+                      <span class="badge badge-teal">Available</span>
+                    } @else {
+                      <span class="badge badge-grey">None</span>
+                    }
+                  </td>
+                  <td class="tags-col">
+                    @for (tag of r.conditionTags; track tag) {
+                      <span class="badge badge-grey tag-sm">{{ tag }}</span>
+                    }
+                    @if (r.conditionTags.length === 0) {
+                      <span class="text-muted">—</span>
+                    }
+                  </td>
+                  <td class="date-col">
+                    @if (r.indexedAt) {
+                      {{ r.indexedAt | date:'MMM d, yyyy' }}
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</main>

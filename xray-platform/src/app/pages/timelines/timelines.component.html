@@ -1,0 +1,301 @@
+<app-topbar pageTitle="Patient Timelines"
+  [breadcrumbs]="selectedCase() ? [
+    { label: 'Patient Timelines', route: '/timelines' },
+    { label: selectedCase()!.caseIdentifier }
+  ] : undefined">
+</app-topbar>
+
+<main class="page-container timelines-page" role="main">
+
+  @if (isLoading()) {
+    <div class="loading-state" role="status" aria-live="polite">
+      <div class="skeleton" style="height:40px; width:200px; margin-bottom: 16px;"></div>
+      <div class="skeleton" style="height:300px; width:100%;"></div>
+    </div>
+  } @else {
+    <div class="timelines-layout">
+
+      <!-- Case selector -->
+      <aside class="case-selector" aria-label="Select a research case">
+        <div class="card case-selector-card">
+          <div class="case-selector-header">
+            <h2 class="case-selector-title">Research Cases</h2>
+            <span class="case-count">{{ allCases().length }}</span>
+          </div>
+          <ul class="case-selector-list" role="list">
+            @for (c of allCases(); track c.id) {
+              <li>
+                <button
+                  class="case-selector-item"
+                  [class.active]="selectedCase()?.id === c.id"
+                  (click)="selectCase(c)"
+                  [attr.aria-current]="selectedCase()?.id === c.id ? 'true' : null"
+                  [id]="'select-case-' + c.id"
+                >
+                  <div class="selector-thumb">
+                    <img [src]="c.examinations[0]?.thumbnailUrl" [alt]="c.caseIdentifier" width="40" height="40" loading="lazy">
+                  </div>
+                  <div class="selector-info">
+                    <span class="selector-id">{{ c.caseIdentifier }}</span>
+                    <span class="selector-meta">{{ c.totalExaminations }} exam(s)</span>
+                    @if (c.conditionTags.length > 0) {
+                      <span class="selector-tags">{{ c.conditionTags.slice(0,2).join(', ') }}{{ c.conditionTags.length > 2 ? '…' : '' }}</span>
+                    }
+                  </div>
+                  <app-icon name="chevron-right" [size]="14" class="selector-arrow"></app-icon>
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      @if (selectedCase(); as sc) {
+        <div class="timeline-main">
+
+          <!-- Case header -->
+          <div class="case-header">
+            <div class="case-header-info">
+              <h1 class="case-title">{{ sc.caseIdentifier }}</h1>
+              <div class="case-header-meta">
+                <span class="badge badge-grey">{{ sc.totalExaminations }} examination(s)</span>
+                <span class="badge badge-grey">{{ sc.datasetSource }}</span>
+                @if (sc.patientAge) {
+                  <span class="badge badge-grey">Age: {{ sc.patientAge }}</span>
+                }
+                @if (sc.patientGender) {
+                  <span class="badge badge-grey">{{ sc.patientGender === 'M' ? 'Male' : sc.patientGender === 'F' ? 'Female' : sc.patientGender }}</span>
+                }
+                @for (tag of sc.conditionTags; track tag) {
+                  <span class="badge badge-blue">{{ tag }}</span>
+                }
+              </div>
+            </div>
+            <div class="case-header-actions">
+              <a
+                [routerLink]="['/comparison']"
+                [queryParams]="{ case: sc.id }"
+                class="btn btn-secondary"
+                [attr.aria-label]="'Compare images for ' + sc.caseIdentifier"
+              >
+                <app-icon name="columns" [size]="16"></app-icon>
+                Compare Images
+              </a>
+            </div>
+          </div>
+
+          <!-- Examination timeline strip -->
+          <div class="timeline-strip card" role="navigation" aria-label="Examination sequence">
+            <div class="timeline-strip-header">
+              <h2 class="strip-title">Examination Sequence</h2>
+              <p class="strip-note">Chronological follow-up order from NIH ChestX-ray14 dataset</p>
+            </div>
+            <div class="timeline-track">
+              @for (exam of sc.examinations; track exam.id; let i = $index) {
+                <div class="timeline-node-wrapper">
+                  <button
+                    class="timeline-node"
+                    [class.active]="selectedExamIndex() === i"
+                    (click)="selectExamination(i)"
+                    [attr.aria-label]="'Select ' + exam.metadata.followUpNumber"
+                    [attr.aria-current]="selectedExamIndex() === i ? 'true' : null"
+                    [id]="'timeline-node-' + i"
+                  >
+                    <img [src]="exam.thumbnailUrl" [alt]="'Examination ' + (i + 1)" width="60" height="60" loading="lazy">
+                    <div class="timeline-node-info">
+                      <span class="timeline-node-label">Exam {{ i + 1 }}</span>
+                      <span class="timeline-node-type">{{ exam.viewType }}</span>
+                      @if (exam.findingLabelList && exam.findingLabelList.length > 0) {
+                        <span class="timeline-node-finding">{{ exam.findingLabelList[0] }}{{ exam.findingLabelList.length > 1 ? '…' : '' }}</span>
+                      }
+                    </div>
+                  </button>
+                  @if (i < sc.examinations.length - 1) {
+                    <div class="timeline-connector" aria-hidden="true"></div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Current examination viewer -->
+          @if (currentExamination; as exam) {
+            <div class="exam-viewer">
+
+              <!-- Image panel -->
+              <div class="card exam-image-card">
+                <div class="exam-image-header">
+                  <h2 class="exam-heading">{{ exam.metadata.followUpNumber }}</h2>
+                  <div class="exam-nav">
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      (click)="navigatePrev()"
+                      [disabled]="selectedExamIndex() === 0"
+                      aria-label="Previous examination"
+                      id="prev-exam-btn"
+                    >
+                      <app-icon name="chevron-left" [size]="16"></app-icon>
+                      Previous
+                    </button>
+                    <span class="exam-counter">{{ selectedExamIndex() + 1 }} / {{ sc.examinations.length }}</span>
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      (click)="navigateNext()"
+                      [disabled]="selectedExamIndex() === sc.examinations.length - 1"
+                      aria-label="Next examination"
+                      id="next-exam-btn"
+                    >
+                      Next
+                      <app-icon name="chevron-right" [size]="16"></app-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Findings banner above image -->
+                @if (exam.findingLabelList && exam.findingLabelList.length > 0) {
+                  <div class="findings-banner">
+                    <app-icon name="info" [size]="14"></app-icon>
+                    <span class="findings-banner-label">Findings:</span>
+                    @for (label of exam.findingLabelList; track label) {
+                      <span class="badge badge-blue">{{ label }}</span>
+                    }
+                  </div>
+                }
+
+                <div class="exam-image-panel">
+                  <img
+                    [src]="exam.imageUrl"
+                    [alt]="'Examination ' + (selectedExamIndex() + 1) + ' for case ' + sc.caseIdentifier"
+                    class="exam-image"
+                    loading="lazy"
+                  >
+                </div>
+
+                <div class="exam-image-footer">
+                  <a
+                    [routerLink]="['/comparison']"
+                    [queryParams]="{ case: sc.id, exam: exam.id }"
+                    class="btn btn-secondary btn-sm"
+                    aria-label="Open in image comparison"
+                  >
+                    <app-icon name="columns" [size]="14"></app-icon>
+                    Open in Comparison
+                  </a>
+                </div>
+              </div>
+
+              <!-- Metadata sidebar -->
+              <div class="exam-metadata">
+                <div class="card metadata-card">
+                  <div class="card-header">
+                    <h3 class="meta-card-title">Examination Details</h3>
+                  </div>
+                  <div class="card-body metadata-body">
+                    <dl class="meta-list">
+                      <div class="meta-row">
+                        <dt>Sequence</dt>
+                        <dd>{{ exam.metadata.followUpNumber }}</dd>
+                      </div>
+                      <div class="meta-row">
+                        <dt>View type</dt>
+                        <dd>{{ exam.metadata.projectionLabel }}</dd>
+                      </div>
+                      <div class="meta-row">
+                        <dt>Image size</dt>
+                        <dd>{{ exam.width ?? '–' }} × {{ exam.height ?? '–' }} px</dd>
+                      </div>
+                      @if (exam.pixelSpacing) {
+                        <div class="meta-row">
+                          <dt>Pixel spacing</dt>
+                          <dd>{{ exam.pixelSpacing }}</dd>
+                        </div>
+                      }
+                      <div class="meta-row">
+                        <dt>Image on disk</dt>
+                        <dd>
+                          @if (exam.imageAvailable) {
+                            <span class="badge badge-green">Available</span>
+                          } @else {
+                            <span class="badge badge-grey">Not available</span>
+                          }
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <!-- Radiological findings for this exam -->
+                    @if (exam.findingLabelList && exam.findingLabelList.length > 0) {
+                      <div class="meta-section">
+                        <p class="meta-section-title">Radiological Findings</p>
+                        <div class="meta-tags">
+                          @for (label of exam.findingLabelList; track label) {
+                            <span class="badge badge-blue">{{ label }}</span>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    <!-- Patient info -->
+                    @if (sc.patientAge || sc.patientGender) {
+                      <div class="meta-section">
+                        <p class="meta-section-title">Patient Info</p>
+                        <dl class="meta-list">
+                          @if (sc.patientAge) {
+                            <div class="meta-row">
+                              <dt>Age</dt>
+                              <dd>{{ sc.patientAge }} years</dd>
+                            </div>
+                          }
+                          @if (sc.patientGender) {
+                            <div class="meta-row">
+                              <dt>Gender</dt>
+                              <dd>{{ sc.patientGender === 'M' ? 'Male' : sc.patientGender === 'F' ? 'Female' : sc.patientGender }}</dd>
+                            </div>
+                          }
+                        </dl>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Other examinations / follow-ups -->
+                @if (sc.examinations.length > 1) {
+                  <div class="card related-card">
+                    <div class="card-header">
+                      <h3 class="meta-card-title">Other Follow-ups</h3>
+                    </div>
+                    <div class="related-list">
+                      @for (e of sc.examinations; track e.id; let i = $index) {
+                        @if (i !== selectedExamIndex()) {
+                          <button
+                            class="related-item"
+                            (click)="selectExamination(i)"
+                            [id]="'related-exam-' + i"
+                          >
+                            <img [src]="e.thumbnailUrl" [alt]="'Exam ' + (i+1)" width="48" height="48" loading="lazy">
+                            <div class="related-info">
+                              <span class="related-label">{{ e.metadata.followUpNumber }}</span>
+                              <span class="related-type">{{ e.viewType }}</span>
+                              @if (e.findingLabelList && e.findingLabelList.length > 0) {
+                                <span class="related-findings">
+                                  @for (lbl of e.findingLabelList; track lbl) {
+                                    <span class="badge badge-blue" style="font-size:10px; padding: 1px 5px;">{{ lbl }}</span>
+                                  }
+                                </span>
+                              }
+                            </div>
+                          </button>
+                        }
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+    </div>
+  }
+</main>

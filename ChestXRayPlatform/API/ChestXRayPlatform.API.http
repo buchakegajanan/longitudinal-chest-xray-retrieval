@@ -1,0 +1,6 @@
+@ChestXRayPlatform.API_HostAddress = http://localhost:5028
+
+GET {{ChestXRayPlatform.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

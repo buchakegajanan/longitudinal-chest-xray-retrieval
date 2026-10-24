@@ -1,0 +1,177 @@
+<app-topbar pageTitle="Image Comparison"
+  [breadcrumbs]="[
+    { label: 'Similar Cases', route: '/similar-cases' },
+    { label: 'Image Comparison' }
+  ]">
+</app-topbar>
+
+<main class="comparison-page" role="main">
+
+  <!-- Toolbar -->
+  <div class="comparison-toolbar" role="toolbar" aria-label="Image comparison controls">
+    <div class="toolbar-left">
+      <h1 class="toolbar-title">Image Comparison</h1>
+      @if (selectedCase(); as sc) {
+        <span class="badge badge-grey">{{ sc.caseIdentifier }}</span>
+      }
+    </div>
+
+    <div class="toolbar-controls">
+      <button class="btn btn-ghost btn-sm" (click)="zoomOut()" [disabled]="zoomLevel() <= 25 && !isFitToScreen()" aria-label="Zoom out" id="zoom-out-btn">
+        <app-icon name="zoom-out" [size]="16"></app-icon>
+      </button>
+      <span class="zoom-label" aria-live="polite" aria-atomic="true">
+        {{ isFitToScreen() ? 'Fit' : zoomLevel() + '%' }}
+      </span>
+      <button class="btn btn-ghost btn-sm" (click)="zoomIn()" [disabled]="zoomLevel() >= 400" aria-label="Zoom in" id="zoom-in-btn">
+        <app-icon name="zoom-in" [size]="16"></app-icon>
+      </button>
+
+      <div class="toolbar-sep" aria-hidden="true"></div>
+
+      <button class="btn btn-ghost btn-sm" (click)="fitToScreen()" aria-label="Fit to screen" id="fit-screen-btn">
+        <app-icon name="maximize-2" [size]="16"></app-icon>
+        Fit
+      </button>
+      <button class="btn btn-ghost btn-sm" (click)="resetView()" aria-label="Reset view" id="reset-view-btn">
+        <app-icon name="rotate-ccw" [size]="16"></app-icon>
+        Reset
+      </button>
+    </div>
+
+    <!-- Case selector in toolbar -->
+    <div class="toolbar-right">
+      @if (allCases().length > 0) {
+        <label class="case-picker">
+          <span>Case</span>
+          <select class="case-select" [ngModel]="selectedCase()?.id ?? ''" (ngModelChange)="onCaseIdChange($event)" aria-label="Select case for comparison">
+            @for (c of allCases(); track c.id) {
+              <option [ngValue]="c.id">{{ c.caseIdentifier }} · {{ c.totalExaminations }} exam{{ c.totalExaminations === 1 ? '' : 's' }}</option>
+            }
+          </select>
+        </label>
+      }
+    </div>
+  </div>
+
+  <!-- Comparison workspace -->
+  <div class="comparison-workspace">
+
+    @if (selectedCase(); as sc) {
+      <!-- Left panel -->
+      <div class="image-panel">
+        <div class="panel-header">
+          <span class="panel-label" aria-label="Left comparison image">
+            {{ leftUsesQueryImage() && queryImagePreview() ? 'Current upload' : 'Baseline / Earlier' }}
+          </span>
+          <div class="panel-exam-selector">
+            @if (queryImagePreview()) {
+              <button
+                class="exam-select-btn query-select-btn"
+                [class.active]="leftUsesQueryImage()"
+                (click)="selectQueryImage()"
+                aria-label="Show uploaded current X-ray in left panel"
+                title="Current uploaded X-ray"
+              >Query</button>
+            }
+            @for (exam of sc.examinations; track exam.id; let i = $index) {
+              <button
+                class="exam-select-btn"
+                [class.active]="leftIndex() === i"
+                (click)="selectLeft(i)"
+                [attr.aria-label]="'Select examination ' + (i + 1) + ' for left panel'"
+                [id]="'left-exam-' + i"
+              >{{ i + 1 }}</button>
+            }
+          </div>
+        </div>
+        <div class="panel-image-area">
+          @if (leftUsesQueryImage() && queryImagePreview()) {
+            <div class="panel-image-wrapper" [class.fit]="isFitToScreen()">
+              <img
+                [src]="queryImagePreview()"
+                alt="Uploaded current chest X-ray"
+                [ngStyle]="imageStyle"
+                decoding="async"
+              >
+            </div>
+            <div class="panel-footer">
+              <span class="panel-meta">Current uploaded X-ray</span>
+              <span class="panel-type badge badge-grey">Query image</span>
+            </div>
+          } @else if (leftExam; as exam) {
+            <div class="panel-image-wrapper" [class.fit]="isFitToScreen()">
+              <img
+                [src]="exam.imageUrl"
+                [alt]="'Left panel: ' + exam.metadata.followUpNumber"
+                [ngStyle]="imageStyle"
+                decoding="async"
+              >
+            </div>
+            <div class="panel-footer">
+              <span class="panel-meta">{{ exam.metadata.followUpNumber }}</span>
+              <span class="panel-type badge badge-grey">{{ exam.viewType }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="panel-divider" aria-hidden="true">
+        <div class="divider-line"></div>
+        <span class="divider-icon">
+          <app-icon name="git-compare" [size]="16"></app-icon>
+        </span>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- Right panel -->
+      <div class="image-panel">
+        <div class="panel-header">
+          <span class="panel-label" aria-label="Right panel — follow-up examination">Follow-up / Later</span>
+          <div class="panel-exam-selector">
+            @for (exam of sc.examinations; track exam.id; let i = $index) {
+              <button
+                class="exam-select-btn"
+                [class.active]="rightIndex() === i"
+                (click)="selectRight(i)"
+                [attr.aria-label]="'Select examination ' + (i + 1) + ' for right panel'"
+                [id]="'right-exam-' + i"
+              >{{ i + 1 }}</button>
+            }
+          </div>
+        </div>
+        <div class="panel-image-area">
+          @if (rightExam; as exam) {
+            <div class="panel-image-wrapper" [class.fit]="isFitToScreen()">
+              <img
+                [src]="exam.imageUrl"
+                [alt]="'Right panel: ' + exam.metadata.followUpNumber"
+                [ngStyle]="imageStyle"
+                decoding="async"
+              >
+            </div>
+            <div class="panel-footer">
+              <span class="panel-meta">{{ exam.metadata.followUpNumber }}</span>
+              <span class="panel-type badge badge-grey">{{ exam.viewType }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+    } @else {
+      <div class="comparison-empty" role="status">
+        <app-icon name="columns" [size]="48"></app-icon>
+        <p>Select a case to begin comparison.</p>
+        <a routerLink="/similar-cases" class="btn btn-secondary">View similar cases</a>
+      </div>
+    }
+  </div>
+
+  <!-- Notice -->
+  <div class="comparison-notice" role="note">
+    <app-icon name="info" [size]="13"></app-icon>
+    <span>Image registration, difference maps, and automated measurements are not implemented in this prototype. Comparison is visual only.</span>
+  </div>
+
+</main>
